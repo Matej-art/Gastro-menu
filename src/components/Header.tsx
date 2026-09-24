@@ -6,7 +6,6 @@ import {
   Code2,
   ShieldAlert,
   Crown,
-  Rocket,
   CheckCircle2,
   History,
 } from 'lucide-react';
@@ -15,7 +14,6 @@ interface HeaderProps {
   onLoadPreset: (presetId: string) => void;
   isSubscribed: boolean;
   onOpenSubscriptionModal: () => void;
-  onOpenDeploymentGuide: () => void;
   historyCount?: number;
   onScrollToHistory?: () => void;
 }
@@ -24,7 +22,6 @@ export const Header: React.FC<HeaderProps> = ({
   onLoadPreset,
   isSubscribed,
   onOpenSubscriptionModal,
-  onOpenDeploymentGuide,
   historyCount = 0,
   onScrollToHistory,
 }) => {
@@ -63,16 +60,6 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="font-semibold">Historie ({historyCount}/5)</span>
             </button>
           )}
-
-          {/* Deployment Guide Button */}
-          <button
-            onClick={onOpenDeploymentGuide}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 border border-stone-800 text-stone-300 hover:text-stone-100 transition-colors cursor-pointer"
-            title="Návod k nasazení aplikace a nastavení API klíče"
-          >
-            <Rocket className="w-3.5 h-3.5 text-amber-400" />
-            <span className="font-semibold">Návod k nasazení</span>
-          </button>
 
           {/* Subscription Button */}
           {isSubscribed ? (

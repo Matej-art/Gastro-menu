@@ -7,8 +7,8 @@ import { AllergenInspectorTab } from './components/AllergenInspectorTab';
 import { DishesEditorTab } from './components/DishesEditorTab';
 import { PrintMenuModal } from './components/PrintMenuModal';
 import { SubscriptionModal } from './components/SubscriptionModal';
-import { DeploymentGuideModal } from './components/DeploymentGuideModal';
 import { MenuHistoryBar } from './components/MenuHistoryBar';
+import { DefaultPricingSettingsCard } from './components/DefaultPricingSettingsCard';
 import { SAMPLE_PRESETS, SampleMenuPreset } from './data/presets';
 import { MenuAnalysisResult, Dish } from './types/menu';
 import {
@@ -18,6 +18,12 @@ import {
   clearAllMenuHistory,
   HistoryMenuItem,
 } from './data/historyStorage';
+import {
+  getDefaultPricingSettings,
+  saveDefaultPricingSettings,
+  applyDefaultCategoryPrices,
+  DefaultPricingSettings,
+} from './data/defaultPricingStorage';
 import {
   Share2,
   Code2,
@@ -61,10 +67,19 @@ export default function App() {
     return existing;
   });
 
+  // Default pricing settings for missing prices
+  const [defaultPricingSettings, setDefaultPricingSettings] = useState<DefaultPricingSettings>(() => {
+    return getDefaultPricingSettings();
+  });
+
+  const handleSaveDefaultPricing = (updated: DefaultPricingSettings) => {
+    setDefaultPricingSettings(updated);
+    saveDefaultPricingSettings(updated);
+  };
+
   // Modals state
   const [isPrintModalOpen, setIsPrintModalOpen] = useState<boolean>(false);
   const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState<boolean>(false);
-  const [isDeploymentGuideOpen, setIsDeploymentGuideOpen] = useState<boolean>(false);
 
   // Subscription state (persisted in localStorage)
   const [isSubscribed, setIsSubscribed] = useState<boolean>(() => {
@@ -99,19 +114,35 @@ export default function App() {
   };
 
   const executeAnalyzeRequest = async (payload: any) => {
+    const payloadWithSettings = {
+      ...payload,
+      defaultPricing: defaultPricingSettings,
+    };
+
     const response = await fetch('/api/analyze-menu', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(payloadWithSettings),
     });
 
     const data = await response.json();
     if (!response.ok || !data.success) {
       throw new Error(data.error || 'Nastala chyba při zpracování menu.');
     }
-    return data.data;
+
+    // Client-side fallback check: Ensure any dishes with empty/missing price are filled according to default settings
+    const analyzedData = data.data;
+    if (analyzedData && Array.isArray(analyzedData.dishes)) {
+      const { dishes: filledDishes } = applyDefaultCategoryPrices(
+        analyzedData.dishes,
+        defaultPricingSettings
+      );
+      analyzedData.dishes = filledDishes;
+    }
+
+    return analyzedData;
   };
 
   const handleAnalyze = async (payload: {
@@ -299,7 +330,6 @@ export default function App() {
         }}
         isSubscribed={isSubscribed}
         onOpenSubscriptionModal={() => setIsSubscriptionModalOpen(true)}
-        onOpenDeploymentGuide={() => setIsDeploymentGuideOpen(true)}
         historyCount={menuHistory.length}
         onScrollToHistory={handleScrollToHistory}
       />
@@ -362,6 +392,12 @@ export default function App() {
           onSelectPreset={handleSelectPreset}
           isSubscribed={isSubscribed}
           onRequireSubscription={() => setIsSubscriptionModalOpen(true)}
+        />
+
+        {/* Default Pricing Settings for food categories */}
+        <DefaultPricingSettingsCard
+          settings={defaultPricingSettings}
+          onSaveSettings={handleSaveDefaultPricing}
         />
 
         {/* Local Storage History of up to 5 recent menus */}
@@ -595,12 +631,6 @@ export default function App() {
         isSubscribed={isSubscribed}
         onActivateSubscription={handleActivateSubscription}
         onCancelSubscription={handleCancelSubscription}
-      />
-
-      {/* Deployment Guide Modal */}
-      <DeploymentGuideModal
-        isOpen={isDeploymentGuideOpen}
-        onClose={() => setIsDeploymentGuideOpen(false)}
       />
 
       {/* Footer */}

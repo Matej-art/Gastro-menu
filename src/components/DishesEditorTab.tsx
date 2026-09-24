@@ -247,9 +247,19 @@ export const DishesEditorTab: React.FC<DishesEditorTabProps> = ({
                         {dish.category}
                       </span>
                       <strong className="text-sm text-stone-100">{dish.name}</strong>
-                      <span className="text-xs font-bold text-amber-400 font-mono px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
-                        {dish.price}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-amber-400 font-mono px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
+                          {dish.price}
+                        </span>
+                        {dish.isDefaultPriceApplied && (
+                          <span
+                            className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                            title="Tato cena byla automaticky doplněna z vaší nastavené výchozí cenové hladiny kategorie"
+                          >
+                            výchozí cena
+                          </span>
+                        )}
+                      </div>
                     </div>
                     {dish.description && (
                       <p className="text-xs text-stone-400">{dish.description}</p>

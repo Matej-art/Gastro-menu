@@ -163,6 +163,7 @@ app.post('/api/analyze-menu', async (req, res) => {
       tone = 'chutne_a_stavnate',
       restaurantName = '',
       specialsNote = '',
+      defaultPricing,
     } = req.body;
 
     if (!process.env.GEMINI_API_KEY) {
@@ -343,16 +344,53 @@ Vrať POUZE validní JSON v této přesné struktuře:
         const lowerCat = (dish.category || '').toLowerCase();
         
         // If it got marked as dessert or sweet, but contains known savory pub food words
+        let cat = dish.category;
         if (
           (lowerCat.includes('dezert') || lowerCat.includes('sladk')) &&
           savorySnackKeywords.some((kw) => lowerName.includes(kw))
         ) {
-          return {
-            ...dish,
-            category: 'Hlavní jídla',
-          };
+          cat = 'Hlavní jídla';
         }
-        return dish;
+
+        // Check if price is missing/unspecified and default pricing is provided
+        let price = dish.price || '';
+        const trimmedPrice = String(price).trim().toLowerCase();
+        const isMissingPrice =
+          !trimmedPrice ||
+          trimmedPrice === '-' ||
+          trimmedPrice === '–' ||
+          trimmedPrice === '—' ||
+          trimmedPrice === '0' ||
+          trimmedPrice === '0 kč' ||
+          trimmedPrice === 'neuvedeno' ||
+          trimmedPrice === 'kč';
+
+        if (isMissingPrice && defaultPricing && defaultPricing.enabled) {
+          const checkCat = (cat || '').toLowerCase();
+          if (checkCat.includes('polévk') || checkCat.includes('polevk') || checkCat.includes('soup')) {
+            if (defaultPricing.categories?.soups?.enabled && defaultPricing.categories?.soups?.price) {
+              price = `${defaultPricing.categories.soups.price} Kč`;
+            }
+          } else if (checkCat.includes('dezert') || checkCat.includes('sladk') || checkCat.includes('dessert')) {
+            if (defaultPricing.categories?.desserts?.enabled && defaultPricing.categories?.desserts?.price) {
+              price = `${defaultPricing.categories.desserts.price} Kč`;
+            }
+          } else if (checkCat.includes('speciál') || checkCat.includes('special') || checkCat.includes('týden')) {
+            if (defaultPricing.categories?.specials?.enabled && defaultPricing.categories?.specials?.price) {
+              price = `${defaultPricing.categories.specials.price} Kč`;
+            }
+          } else {
+            if (defaultPricing.categories?.mains?.enabled && defaultPricing.categories?.mains?.price) {
+              price = `${defaultPricing.categories.mains.price} Kč`;
+            }
+          }
+        }
+
+        return {
+          ...dish,
+          category: cat,
+          price,
+        };
       });
     }
 

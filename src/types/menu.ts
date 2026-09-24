@@ -5,6 +5,7 @@ export interface Dish {
   description?: string;
   price: string;
   allergens: number[];
+  isDefaultPriceApplied?: boolean;
 }
 
 export interface SocialPostData {
