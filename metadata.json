@@ -1,0 +1,8 @@
+{
+  "name": "Remix GastroMenu Asistent Pro",
+  "description": "Špičkový AI asistent pro majitele restaurací a bister. Z fotky nebo textu poledního menu okamžitě vygeneruje lákavé příspěvky pro sociální sítě, čistou HTML tabulku na web a audit alergenů 1–14.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
