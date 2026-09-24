@@ -25,7 +25,19 @@ export const PrintMenuModal: React.FC<PrintMenuModalProps> = ({
     window.print();
   };
 
-  const categories = Array.from(new Set(dishes.map((d) => d.category)));
+  const getCategoryRank = (cat: string) => {
+    const c = cat.toLowerCase();
+    if (c.includes('polévk')) return 1;
+    if (c.includes('hlavní')) return 2;
+    if (c.includes('speciál') || c.includes('týden')) return 3;
+    if (c.includes('salát') || c.includes('předkrm')) return 4;
+    if (c.includes('dezert') || c.includes('sladk')) return 10;
+    return 5;
+  };
+
+  const categories = Array.from(new Set(dishes.map((d) => d.category))).sort(
+    (a, b) => getCategoryRank(a) - getCategoryRank(b)
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/80 backdrop-blur-sm overflow-y-auto">

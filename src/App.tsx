@@ -430,20 +430,29 @@ export default function App() {
               </div>
               <div className="bg-stone-900/60 border border-stone-800 rounded-xl p-2.5 flex items-center gap-2">
                 <span className="w-7 h-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold">
-                  {result.dishes?.filter((d) => !d.category?.toLowerCase().includes('polévk')).length || 0}
+                  {result.dishes?.filter(
+                    (d) =>
+                      !d.category?.toLowerCase().includes('polévk') &&
+                      !d.category?.toLowerCase().includes('dezert') &&
+                      !d.category?.toLowerCase().includes('sladk')
+                  ).length || 0}
                 </span>
                 <div>
-                  <span className="text-stone-400 text-[11px] block">Hlavní chody & ostatní</span>
-                  <strong className="text-stone-200">s přílohami a cenami</strong>
+                  <span className="text-stone-400 text-[11px] block">Hlavní chody</span>
+                  <strong className="text-stone-200">teplá i studená</strong>
                 </div>
               </div>
               <div className="bg-stone-900/60 border border-stone-800 rounded-xl p-2.5 flex items-center gap-2">
-                <span className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold">
-                  ✓
+                <span className="w-7 h-7 rounded-lg bg-pink-500/10 text-pink-400 flex items-center justify-center font-bold">
+                  {result.dishes?.filter(
+                    (d) =>
+                      d.category?.toLowerCase().includes('dezert') ||
+                      d.category?.toLowerCase().includes('sladk')
+                  ).length || 0}
                 </span>
                 <div>
-                  <span className="text-stone-400 text-[11px] block">Alergeny 1–14</span>
-                  <strong className="text-stone-200">Ověřeno šéfkuchařem</strong>
+                  <span className="text-stone-400 text-[11px] block">Dezerty & sladké</span>
+                  <strong className="text-stone-200">sladká tečka</strong>
                 </div>
               </div>
             </div>
@@ -475,10 +484,12 @@ export default function App() {
             {/* Tab 3: HTML Table for Website */}
             {activeTab === 'html' && (
               <HtmlTableTab
-                styledSnippet={result.htmlTable.styledSnippet}
-                minimalSnippet={result.htmlTable.minimalSnippet}
+                styledSnippet={result.htmlTable?.styledSnippet || ''}
+                minimalSnippet={result.htmlTable?.minimalSnippet || ''}
                 restaurantName={result.restaurantName}
                 menuDate={result.menuDate}
+                servingHours={result.servingHours}
+                dishes={result.dishes || []}
               />
             )}
 

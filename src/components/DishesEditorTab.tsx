@@ -179,12 +179,16 @@ export const DishesEditorTab: React.FC<DishesEditorTabProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                     <div>
                       <label className="block text-[11px] text-stone-400 mb-1">Kategorie:</label>
-                      <input
-                        type="text"
+                      <select
                         value={dish.category}
                         onChange={(e) => handleDishChange(index, 'category', e.target.value)}
                         className="w-full bg-stone-950 border border-stone-700 rounded-lg px-2.5 py-1.5 text-xs text-stone-100"
-                      />
+                      >
+                        <option value="Polévky">Polévky</option>
+                        <option value="Hlavní jídla">Hlavní jídla</option>
+                        <option value="Týdenní speciál">Týdenní speciál</option>
+                        <option value="Dezerty a doplňky">Dezerty a doplňky</option>
+                      </select>
                     </div>
                     <div className="sm:col-span-2">
                       <label className="block text-[11px] text-stone-400 mb-1">Název jídla:</label>
@@ -229,7 +233,17 @@ export const DishesEditorTab: React.FC<DishesEditorTabProps> = ({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-stone-800 text-stone-400 border border-stone-700">
+                      <span
+                        className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                          dish.category?.toLowerCase().includes('polévk')
+                            ? 'bg-amber-950/40 text-amber-300 border-amber-800/60'
+                            : dish.category?.toLowerCase().includes('dezert') || dish.category?.toLowerCase().includes('sladk')
+                            ? 'bg-pink-950/40 text-pink-300 border-pink-800/60'
+                            : dish.category?.toLowerCase().includes('speciál')
+                            ? 'bg-purple-950/40 text-purple-300 border-purple-800/60'
+                            : 'bg-stone-800 text-stone-300 border-stone-700'
+                        }`}
+                      >
                         {dish.category}
                       </span>
                       <strong className="text-sm text-stone-100">{dish.name}</strong>

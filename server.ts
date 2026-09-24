@@ -189,15 +189,28 @@ app.post('/api/analyze-menu', async (req, res) => {
 
     const selectedTone = tonePrompts[tone] || tonePrompts.chutne_a_stavnate;
 
-    const systemInstruction = `Jsi elitní gastronomický auditor, špičkový OCR specialista na čtení jídelních lístků a profesionální gastro copywriter v České republice.
-Tvým prvořadým úkolem je DŮKLADNĚ A PŘESNĚ PŘEČÍST A EXTRAHOVAT SEZNAM VŠECH JÍDEL Z PŘILOŽENÉ FOTOGRAFIE NEBO TEXTU.
+    const systemInstruction = `Jsi elitní gastronomický auditor, špičkový OCR specialista na čtení českých jídelních lístků a profesionální gastro copywriter v České republice.
+Tvým prvořadým úkolem je DŮKLADNĚ A PŘESNĚ PŘEČÍST A EXTRAHOVAT SEZNAM VŠECH JÍDEL Z PŘILOŽENÉ FOTOGRAFIE NEBO TEXTU A SPRÁVNĚ JE ZAŘADIT DO KATEGORIÍ.
+
+Pravidla pro přesnou kategorizaci pokrmů (category):
+1. "Polévky":
+   - Vývary, kulajda, bramboračka, dršťková, česnečka, polévka dne atd.
+2. "Hlavní jídla":
+   - Všechny hlavní teplé i studené chody, maso, omáčky, těstoviny, saláty jako hlavní jídlo, burgery, minutky.
+   - POZOR: Chuťovky, studená jídla a hospodské speciality jako "Nakládaný hermelín", "Utopenec", "Tlačenka", "Tatarák", "Pikantní masová směs" či "Smažený sýr" patři VŽDY do "Hlavní jídla" (nebo chuťovky k pivu), NIKDY TO NENÍ DEZERT!
+3. "Dezerty a doplňky":
+   - Pouze sladká jídla a dezerty! Např. jablečný závin (štrúdl), palačinky, lívance, medovník, tiramisu, čokoládový fondant, zmrzlinový pohár, panna cotta.
+   - V jídelních lístcích bývají dezerty umístěny úplně dole na konci lístku nebo pod samostatným nadpisem "Dezerty" / "Sladká tečka".
+   - Pokud jídlo není sladký dezert, NESMÍ mít kategorii "Dezerty a doplňky".
+4. "Týdenní speciál":
+   - Pokrmy označené jako týdenní nabídka, šéfkuchař doporučuje nebo speciál.
 
 Pravidla pro extrakci položek (DISHES):
 1. Přečti VŠECHNY položky bez výjimky – polévky, hlavní chody, minutky, týdenní nabídky, saláty i dezerty.
 2. Pro každé jídlo urči:
-   - "category": ("Polévky", "Hlavní jídla", "Týdenní speciál", "Dezerty a doplňky")
-   - "name": přesný a plný název jídla (včetně gramáže, je-li uvedena, např. "150g Hovězí líčka na víně")
-   - "description": přílohy a detaily (např. "bramborovo-celerové pyré, glazovaná karotka")
+   - "category": ("Polévky" | "Hlavní jídla" | "Dezerty a doplňky" | "Týdenní speciál")
+   - "name": přesný a plný název jídla (včetně gramáže, je-li uvedena, např. "150g Hovězí líčka na víně" nebo "100g Nakládaný hermelín s feferonkou")
+   - "description": přílohy a detaily (např. "bramborovo-celerové pyré, glazovaná karotka" nebo "čerstvý chléb, cibule")
    - "price": přesná cena (např. "185 Kč", "45 Kč"). Pokud cena na snímku není, uveď "-" nebo realistickou cenu.
    - "allergens": pole celých čísel alergenů 1 až 14. Pokud jsou na fotce čísla uvedena, přepiš je. Pokud čísla chybí, TY jako šéfkuchař sám přesně urči čísla alergenů podle surovin (např. lepek 1, vejce 3, mléko/máslo 7, celer 9, hořčice 10).
 3. Pokud je na fotce viditelný název restaurace nebo datum/den nabídky, extrahuj je do "restaurantName" a "menuDate".
@@ -314,6 +327,34 @@ Vrať POUZE validní JSON v této přesné struktuře:
       { parts },
       systemInstruction
     );
+
+    // Safeguard: Ensure savory/beer snacks like "hermelín", "utopenec", "tlačenka", "tatarák", "řízek", "sýr" are never categorized as dessert
+    if (parsedData && Array.isArray(parsedData.dishes)) {
+      const savorySnackKeywords = [
+        'hermelín', 'hermelin', 'camembert', 'nakládaný', 'nakladany',
+        'utopenec', 'utopenci', 'tlačenka', 'tlacenka', 'tatarák', 'tatarak',
+        'klobása', 'klobasa', 'párek', 'parek', 'bramborák', 'bramborak',
+        'smažák', 'smazak', 'smažený sýr', 'smazeny syr', 'topinka', 'topinky',
+        'chilli cheese', 'chipsy', 'hranolky', 'křídla', 'kridla', 'žebra', 'zobra'
+      ];
+
+      parsedData.dishes = parsedData.dishes.map((dish: any) => {
+        const lowerName = (dish.name || '').toLowerCase();
+        const lowerCat = (dish.category || '').toLowerCase();
+        
+        // If it got marked as dessert or sweet, but contains known savory pub food words
+        if (
+          (lowerCat.includes('dezert') || lowerCat.includes('sladk')) &&
+          savorySnackKeywords.some((kw) => lowerName.includes(kw))
+        ) {
+          return {
+            ...dish,
+            category: 'Hlavní jídla',
+          };
+        }
+        return dish;
+      });
+    }
 
     return res.json({ success: true, data: parsedData, model: usedModel });
   } catch (error: any) {
