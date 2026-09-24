@@ -188,10 +188,10 @@ export const DeploymentGuideModal: React.FC<DeploymentGuideModalProps> = ({
                     Ideální pro Node.js fullstack aplikaci s Express backendem i Vite frontendem na 1 kliknutí.
                   </p>
                   <ol className="list-decimal list-inside space-y-1 text-stone-300 pt-1">
-                    <li>Vytvořte si účet na <strong className="text-amber-400">render.com</strong> a propojte GitHub.</li>
+                    <li>Vytvořte si účet na <strong className="text-amber-400">render.com</strong> a propojte GitHub repozitář.</li>
                     <li>Klikněte na <strong>New +</strong> → <strong>Web Service</strong>.</li>
-                    <li>Build Command: <code className="bg-stone-900 px-1 rounded text-amber-300">npm install && npm run build</code></li>
-                    <li>Start Command: <code className="bg-stone-900 px-1 rounded text-amber-300">npm run dev</code> (nebo node server.ts)</li>
+                    <li>Build Command: <code className="bg-stone-900 px-1 rounded text-amber-300">npm install --legacy-peer-deps && npm run build</code></li>
+                    <li>Start Command: <code className="bg-stone-900 px-1 rounded text-amber-300">npm start</code></li>
                     <li>V záložce <strong>Environment</strong> přidejte proměnnou <code className="text-amber-300">GEMINI_API_KEY</code>.</li>
                   </ol>
                 </div>
