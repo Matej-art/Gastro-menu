@@ -23,7 +23,9 @@ interface SubscriptionModalProps {
   onCancelSubscription: () => void;
 }
 
-const VALID_TEST_TOKENS = ['GASTRO2026', 'PROMO149', 'TEST-PRO', 'VIP-SEF', 'RESTAURACE-FREE'];
+// Jediný tajný VIP kód pro administrátora / majitele aplikace.
+// Žádné veřejné kódy se nikde nezobrazují – cizí uživatel se bez tohoto tajného kódu nebo zaplacení nedostane.
+const SECRET_ADMIN_VIP_TOKEN = 'GASTRO-SEF-2026';
 
 export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   isOpen,
@@ -56,21 +58,19 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
       return;
     }
 
-    if (VALID_TEST_TOKENS.includes(cleaned)) {
+    if (cleaned === SECRET_ADMIN_VIP_TOKEN) {
       setIsProcessing(true);
       setTimeout(() => {
         setIsProcessing(false);
         setSuccessAnimation(true);
         setTimeout(() => {
-          onActivateSubscription(`VIP Promo (${cleaned})`, 'Promo Token');
+          onActivateSubscription(`VIP Majitel (Aktivní)`, 'Tajný VIP Kód');
           setSuccessAnimation(false);
           onClose();
         }, 1200);
       }, 700);
     } else {
-      setTokenError(
-        'Neplatný token. Vyzkoušejte testovací kód: GASTRO2026 nebo TEST-PRO.'
-      );
+      setTokenError('Zadaný VIP kód není platný. Zkontrolujte prosím správnost kódu.');
     }
   };
 
@@ -324,17 +324,17 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                   <form onSubmit={handleTokenSubmit} className="space-y-4">
                     <div className="bg-stone-950 p-4 rounded-2xl border border-stone-800 space-y-2">
                       <label className="block text-xs font-medium text-stone-300">
-                        Zadejte promo kód nebo testovací token:
+                        Zadejte VIP aktivační kód:
                       </label>
                       <input
                         type="text"
                         value={tokenInput}
                         onChange={(e) => setTokenInput(e.target.value)}
-                        placeholder="např. GASTRO2026 nebo TEST-PRO"
+                        placeholder="Vložte tajný VIP kód"
                         className="w-full bg-stone-900 border border-stone-800 rounded-lg px-3 py-2.5 text-sm text-stone-100 uppercase tracking-widest font-mono focus:outline-none focus:border-amber-500"
                       />
                       <p className="text-[11px] text-stone-500">
-                        Tip pro testování: Použijte kód <strong className="text-amber-400">GASTRO2026</strong> nebo <strong className="text-amber-400">TEST-PRO</strong> pro okamžitou bezplatnou aktivaci.
+                        Tento přístup je určen výhradně pro autorizované partnery a majitele aplikace s přiděleným VIP kódem.
                       </p>
                     </div>
 
@@ -353,12 +353,12 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                       {isProcessing ? (
                         <>
                           <div className="w-4 h-4 border-2 border-stone-950 border-t-transparent rounded-full animate-spin" />
-                          <span>Ověřuji token...</span>
+                          <span>Ověřuji VIP kód...</span>
                         </>
                       ) : (
                         <>
                           <KeyRound className="w-4 h-4" />
-                          <span>Ověřit token a odemknout aplikaci</span>
+                          <span>Ověřit VIP kód a odemknout aplikaci</span>
                         </>
                       )}
                     </button>

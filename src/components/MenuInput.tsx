@@ -463,7 +463,7 @@ Dezert: Jablečný závin 55 Kč"
             <div className="flex items-center gap-2 text-xs text-amber-200">
               <Crown className="w-4 h-4 text-amber-400 flex-shrink-0" />
               <span>
-                <strong>Aktivujte Gastro PRO (149 Kč/měsíc)</strong> nebo zadejte testovací token pro generování z vlastních snímků.
+                <strong>Aktivujte Gastro PRO (149 Kč/měsíc)</strong> pro okamžité neomezené čtení a generování z fotografií.
               </span>
             </div>
             <button
@@ -471,7 +471,7 @@ Dezert: Jablečný závin 55 Kč"
               onClick={onRequireSubscription}
               className="text-xs font-bold text-amber-400 hover:text-amber-300 underline self-start sm:self-auto cursor-pointer"
             >
-              Aktivovat / Zadat kód →
+              Aktivovat předplatné →
             </button>
           </div>
         )}
