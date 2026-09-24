@@ -8,8 +8,16 @@ import { DishesEditorTab } from './components/DishesEditorTab';
 import { PrintMenuModal } from './components/PrintMenuModal';
 import { SubscriptionModal } from './components/SubscriptionModal';
 import { DeploymentGuideModal } from './components/DeploymentGuideModal';
+import { MenuHistoryBar } from './components/MenuHistoryBar';
 import { SAMPLE_PRESETS, SampleMenuPreset } from './data/presets';
 import { MenuAnalysisResult, Dish } from './types/menu';
+import {
+  getMenuHistory,
+  saveMenuToHistory,
+  deleteHistoryItem,
+  clearAllMenuHistory,
+  HistoryMenuItem,
+} from './data/historyStorage';
 import {
   Share2,
   Code2,
@@ -22,6 +30,7 @@ import {
   ArrowRight,
   Crown,
   Clock,
+  History,
 } from 'lucide-react';
 
 export default function App() {
@@ -41,6 +50,16 @@ export default function App() {
     restaurantName: string;
     specialsNote: string;
   } | null>(null);
+
+  // Local storage menu history (up to 5 recent menus)
+  const [menuHistory, setMenuHistory] = useState<HistoryMenuItem[]>(() => {
+    const existing = getMenuHistory();
+    if (existing.length === 0 && SAMPLE_PRESETS[0]?.sampleResult) {
+      // Seed with initial sample preset so user immediately sees how history works
+      return saveMenuToHistory(SAMPLE_PRESETS[0].sampleResult);
+    }
+    return existing;
+  });
 
   // Modals state
   const [isPrintModalOpen, setIsPrintModalOpen] = useState<boolean>(false);
@@ -111,6 +130,9 @@ export default function App() {
     try {
       const data = await executeAnalyzeRequest(payload);
       setResult(data);
+      // Automatically save to local history (last 5 menus)
+      const updatedHistory = saveMenuToHistory(data);
+      setMenuHistory(updatedHistory);
       // Immediately display the extracted dishes list so the user sees the parsed food items right away
       setActiveTab('dishes');
     } catch (err: any) {
@@ -157,6 +179,35 @@ export default function App() {
   const handleSelectPreset = (preset: SampleMenuPreset) => {
     setResult(preset.sampleResult);
     setErrorMessage(null);
+    const updatedHistory = saveMenuToHistory(preset.sampleResult);
+    setMenuHistory(updatedHistory);
+  };
+
+  const handleSelectFromHistory = (historyMenu: MenuAnalysisResult) => {
+    setResult(historyMenu);
+    setErrorMessage(null);
+    // Switch to dishes tab or social tab for instant review
+    setActiveTab('dishes');
+  };
+
+  const handleDeleteHistoryItem = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = deleteHistoryItem(id);
+    setMenuHistory(updated);
+  };
+
+  const handleClearAllHistory = () => {
+    if (confirm('Opravdu chcete vymazat celou historii uložených menu z tohoto prohlížeče?')) {
+      clearAllMenuHistory();
+      setMenuHistory([]);
+    }
+  };
+
+  const handleScrollToHistory = () => {
+    const el = document.getElementById('gastro-history-section');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   // Helper to re-generate HTML table snippet when dishes or allergens are edited
@@ -224,14 +275,19 @@ export default function App() {
   </tbody>
 </table>`;
 
-    setResult({
+    const updatedResult: MenuAnalysisResult = {
       ...result,
       dishes: newDishes,
       htmlTable: {
         styledSnippet: updatedStyled,
         minimalSnippet: updatedMinimal,
       },
-    });
+    };
+
+    setResult(updatedResult);
+    // Also save updated version to history
+    const updatedHistory = saveMenuToHistory(updatedResult);
+    setMenuHistory(updatedHistory);
   };
 
   return (
@@ -244,6 +300,8 @@ export default function App() {
         isSubscribed={isSubscribed}
         onOpenSubscriptionModal={() => setIsSubscriptionModalOpen(true)}
         onOpenDeploymentGuide={() => setIsDeploymentGuideOpen(true)}
+        historyCount={menuHistory.length}
+        onScrollToHistory={handleScrollToHistory}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -305,6 +363,19 @@ export default function App() {
           isSubscribed={isSubscribed}
           onRequireSubscription={() => setIsSubscriptionModalOpen(true)}
         />
+
+        {/* Local Storage History of up to 5 recent menus */}
+        {menuHistory.length > 0 && (
+          <div id="gastro-history-section">
+            <MenuHistoryBar
+              history={menuHistory}
+              onSelectMenu={handleSelectFromHistory}
+              onDeleteItem={handleDeleteHistoryItem}
+              onClearAll={handleClearAllHistory}
+              currentMenuTitle={result ? `${result.restaurantName} – ${result.menuDate}` : undefined}
+            />
+          </div>
+        )}
 
         {/* Error notification if any */}
         {errorMessage && !retryCountdown && (

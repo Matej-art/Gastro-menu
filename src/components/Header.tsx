@@ -8,6 +8,7 @@ import {
   Crown,
   Rocket,
   CheckCircle2,
+  History,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -15,6 +16,8 @@ interface HeaderProps {
   isSubscribed: boolean;
   onOpenSubscriptionModal: () => void;
   onOpenDeploymentGuide: () => void;
+  historyCount?: number;
+  onScrollToHistory?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -22,6 +25,8 @@ export const Header: React.FC<HeaderProps> = ({
   isSubscribed,
   onOpenSubscriptionModal,
   onOpenDeploymentGuide,
+  historyCount = 0,
+  onScrollToHistory,
 }) => {
   return (
     <header className="border-b border-stone-800 bg-stone-950/80 backdrop-blur sticky top-0 z-40">
@@ -47,6 +52,18 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Feature badges and Action Buttons */}
         <div className="flex items-center flex-wrap gap-2 text-xs">
+          {/* History button if menus are stored */}
+          {historyCount > 0 && onScrollToHistory && (
+            <button
+              onClick={onScrollToHistory}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 border border-stone-800 text-stone-300 hover:text-amber-400 transition-colors cursor-pointer"
+              title="Přejít na historii uložených menu"
+            >
+              <History className="w-3.5 h-3.5 text-amber-400" />
+              <span className="font-semibold">Historie ({historyCount}/5)</span>
+            </button>
+          )}
+
           {/* Deployment Guide Button */}
           <button
             onClick={onOpenDeploymentGuide}
