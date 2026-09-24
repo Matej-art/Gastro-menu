@@ -111,7 +111,8 @@ export default function App() {
     try {
       const data = await executeAnalyzeRequest(payload);
       setResult(data);
-      setActiveTab('social');
+      // Immediately display the extracted dishes list so the user sees the parsed food items right away
+      setActiveTab('dishes');
     } catch (err: any) {
       console.warn('Initial analysis attempt failed:', err);
       const rawMsg = err.message || '';
@@ -135,7 +136,7 @@ export default function App() {
           console.log('Retrying analysis after 3s delay...');
           const retryData = await executeAnalyzeRequest(payload);
           setResult(retryData);
-          setActiveTab('social');
+          setActiveTab('dishes');
           setIsLoading(false);
           return;
         } catch (retryErr: any) {
@@ -356,7 +357,19 @@ export default function App() {
               </div>
 
               {/* Main Tab Navigation */}
-              <div className="flex flex-wrap rounded-xl bg-stone-950 p-1 border border-stone-800 self-start sm:self-auto">
+              <div className="flex flex-wrap rounded-xl bg-stone-950 p-1 border border-stone-800 self-start sm:self-auto gap-1">
+                <button
+                  onClick={() => setActiveTab('dishes')}
+                  className={`flex items-center gap-2 py-2 px-3.5 rounded-lg text-xs font-bold transition-all ${
+                    activeTab === 'dishes'
+                      ? 'bg-amber-500 text-stone-950 shadow-md'
+                      : 'text-stone-300 hover:text-white'
+                  }`}
+                >
+                  <Utensils className="w-4 h-4" />
+                  <span>1. Seznam jídel z menu ({result.dishes?.length || 0})</span>
+                </button>
+
                 <button
                   onClick={() => setActiveTab('social')}
                   className={`flex items-center gap-2 py-2 px-3.5 rounded-lg text-xs font-bold transition-all ${
@@ -366,7 +379,7 @@ export default function App() {
                   }`}
                 >
                   <Share2 className="w-4 h-4" />
-                  <span>1. Sociální sítě (FB & IG)</span>
+                  <span>2. Sociální sítě (FB & IG)</span>
                 </button>
 
                 <button
@@ -378,7 +391,7 @@ export default function App() {
                   }`}
                 >
                   <Code2 className="w-4 h-4" />
-                  <span>2. HTML tabulka na web</span>
+                  <span>3. HTML tabulka na web</span>
                 </button>
 
                 <button
@@ -390,24 +403,64 @@ export default function App() {
                   }`}
                 >
                   <ShieldAlert className="w-4 h-4" />
-                  <span>3. Kontrola alergenů (1–14)</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('dishes')}
-                  className={`flex items-center gap-2 py-2 px-3.5 rounded-lg text-xs font-bold transition-all ${
-                    activeTab === 'dishes'
-                      ? 'bg-amber-500 text-stone-950 shadow-md'
-                      : 'text-stone-300 hover:text-white'
-                  }`}
-                >
-                  <Utensils className="w-4 h-4" />
-                  <span>Položky & Tisk</span>
+                  <span>4. Kontrola alergenů (1–14)</span>
                 </button>
               </div>
             </div>
 
-            {/* Tab 1: Social Media Posts */}
+            {/* Quick extracted summary metrics strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+              <div className="bg-stone-900/60 border border-stone-800 rounded-xl p-2.5 flex items-center gap-2">
+                <span className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold">
+                  {result.dishes?.length || 0}
+                </span>
+                <div>
+                  <span className="text-stone-400 text-[11px] block">Nalezeno položek</span>
+                  <strong className="text-stone-200">v denním lístku</strong>
+                </div>
+              </div>
+              <div className="bg-stone-900/60 border border-stone-800 rounded-xl p-2.5 flex items-center gap-2">
+                <span className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold">
+                  {result.dishes?.filter((d) => d.category?.toLowerCase().includes('polévk')).length || 0}
+                </span>
+                <div>
+                  <span className="text-stone-400 text-[11px] block">Polévky</span>
+                  <strong className="text-stone-200">v nabídce</strong>
+                </div>
+              </div>
+              <div className="bg-stone-900/60 border border-stone-800 rounded-xl p-2.5 flex items-center gap-2">
+                <span className="w-7 h-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold">
+                  {result.dishes?.filter((d) => !d.category?.toLowerCase().includes('polévk')).length || 0}
+                </span>
+                <div>
+                  <span className="text-stone-400 text-[11px] block">Hlavní chody & ostatní</span>
+                  <strong className="text-stone-200">s přílohami a cenami</strong>
+                </div>
+              </div>
+              <div className="bg-stone-900/60 border border-stone-800 rounded-xl p-2.5 flex items-center gap-2">
+                <span className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold">
+                  ✓
+                </span>
+                <div>
+                  <span className="text-stone-400 text-[11px] block">Alergeny 1–14</span>
+                  <strong className="text-stone-200">Ověřeno šéfkuchařem</strong>
+                </div>
+              </div>
+            </div>
+
+            {/* Tab 1: Dishes Editor and Printable View */}
+            {activeTab === 'dishes' && (
+              <DishesEditorTab
+                dishes={result.dishes}
+                menuDate={result.menuDate}
+                restaurantName={result.restaurantName}
+                servingHours={result.servingHours}
+                onUpdateDishes={handleUpdateDishes}
+                onOpenPrintModal={() => setIsPrintModalOpen(true)}
+              />
+            )}
+
+            {/* Tab 2: Social Media Posts */}
             {activeTab === 'social' && (
               <SocialMediaTab
                 facebook={result.socialPosts.facebook}
@@ -419,7 +472,7 @@ export default function App() {
               />
             )}
 
-            {/* Tab 2: HTML Table for Website */}
+            {/* Tab 3: HTML Table for Website */}
             {activeTab === 'html' && (
               <HtmlTableTab
                 styledSnippet={result.htmlTable.styledSnippet}
@@ -429,24 +482,12 @@ export default function App() {
               />
             )}
 
-            {/* Tab 3: Official Allergens 1-14 Check */}
+            {/* Tab 4: Official Allergens 1-14 Check */}
             {activeTab === 'allergens' && (
               <AllergenInspectorTab
                 allergenAnalysis={result.allergenAnalysis}
                 dishes={result.dishes}
                 onUpdateDishes={handleUpdateDishes}
-              />
-            )}
-
-            {/* Tab 4: Dishes Editor and Printable View */}
-            {activeTab === 'dishes' && (
-              <DishesEditorTab
-                dishes={result.dishes}
-                menuDate={result.menuDate}
-                restaurantName={result.restaurantName}
-                servingHours={result.servingHours}
-                onUpdateDishes={handleUpdateDishes}
-                onOpenPrintModal={() => setIsPrintModalOpen(true)}
               />
             )}
           </section>

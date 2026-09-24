@@ -94,20 +94,79 @@ export const MenuInput: React.FC<MenuInputProps> = ({
     return () => window.removeEventListener('paste', handlePaste);
   }, []);
 
-  const handleImageFile = (file: File) => {
+  const processAndResizeImage = (file: File): Promise<{ dataUrl: string; mimeType: string }> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const resultStr = typeof e.target?.result === 'string' ? e.target.result : '';
+        if (!resultStr) {
+          resolve({ dataUrl: '', mimeType: 'image/jpeg' });
+          return;
+        }
+
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 1800;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(img, 0, 0, width, height);
+            const optimized = canvas.toDataURL('image/jpeg', 0.88);
+            resolve({ dataUrl: optimized, mimeType: 'image/jpeg' });
+            return;
+          }
+          resolve({ dataUrl: resultStr, mimeType: file.type || 'image/jpeg' });
+        };
+        img.onerror = () => {
+          resolve({ dataUrl: resultStr, mimeType: file.type || 'image/jpeg' });
+        };
+        img.src = resultStr;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleImageFile = async (file: File) => {
     if (!file.type.startsWith('image/')) {
       alert('Prosím vyberte obrázek (JPG, PNG, WEBP).');
       return;
     }
 
-    setImageMimeType(file.type);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      if (typeof e.target?.result === 'string') {
-        setImagePreview(e.target.result);
+    try {
+      const { dataUrl, mimeType } = await processAndResizeImage(file);
+      if (dataUrl) {
+        setImageMimeType(mimeType);
+        setImagePreview(dataUrl);
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Chyba při zpracování obrázku:', err);
+      // Fallback direct read
+      setImageMimeType(file.type);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (typeof e.target?.result === 'string') {
+          setImagePreview(e.target.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {

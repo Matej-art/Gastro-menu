@@ -94,12 +94,11 @@ async function generateMenuWithFallback(
   contents: any,
   systemInstruction: string
 ) {
-  // Candidate models in prioritized order based on availability
+  // Candidate models in prioritized order based on real-time availability and speed
   const candidateModels = [
+    'gemini-3.1-flash-lite',
     'gemini-3.6-flash',
     'gemini-3.8-flash',
-    'gemini-flash-latest',
-    'gemini-3.1-flash-lite',
   ];
 
   let lastError: any = null;
@@ -114,7 +113,7 @@ async function generateMenuWithFallback(
           config: {
             systemInstruction,
             responseMimeType: 'application/json',
-            temperature: 0.6,
+            temperature: 0.3,
           },
         });
 
@@ -166,9 +165,16 @@ app.post('/api/analyze-menu', async (req, res) => {
       specialsNote = '',
     } = req.body;
 
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({
+        error:
+          'Chybí nastavený GEMINI_API_KEY na serveru. V administraci Render.com otevřete záložku "Environment" a přidejte proměnnou GEMINI_API_KEY s vaším klíčem z Google AI Studio.',
+      });
+    }
+
     if (!image && (!text || text.trim().length === 0)) {
       return res.status(400).json({
-        error: 'Chybí vstupní data. Nahrajte fotografii nebo zadejte text denního menu.',
+        error: 'Chybí vstupní data. Nahrajte fotografii jídelního lístku nebo zadejte text denního menu.',
       });
     }
 
@@ -183,33 +189,50 @@ app.post('/api/analyze-menu', async (req, res) => {
 
     const selectedTone = tonePrompts[tone] || tonePrompts.chutne_a_stavnate;
 
-    const systemInstruction = `Jsi elitní gastronomický marketingový expert, profesionální copywriter pro restaurace a šéfkuchařský auditor hygieny a alergenů v České republice.
-Tvým úkolem je analyzovat polední/denní menu z fotky nebo textu a vygenerovat kompletní profesionální balíček pro majitele podniku:
-1. Strukturovaný přepis všech položek (polévky, hlavní chody, dezerty/nápoje/speciály, ceny v Kč, alergeny 1-14).
-2. Chytlavý, gurmánsky lákavý text pro Facebook a Instagram se skvělým háčkem (hookem), emotikony a cílenými českými hashtagy (#polednimenu, #dnesjim, #kamnaobed, #gastromapa...).
-3. Přehlednou, estetickou HTML tabulku poledního menu, kterou lze ihned zkopírovat a vložit na web (např. do WordPressu, Webnode či jakéhokoliv CMS).
-4. Detailní kontrolu všech 14 oficiálních alergenů (EU nařízení č. 1169/2011) včetně bezpečnostního upozornění na skryté alergeny (např. jíška = lepek 1, celer v hovězím vývaru = 9, smetana v omáčkách = 7, sójová omáčka = 6, trojobal = 1, 3, 7).
+    const systemInstruction = `Jsi elitní gastronomický auditor, špičkový OCR specialista na čtení jídelních lístků a profesionální gastro copywriter v České republice.
+Tvým prvořadým úkolem je DŮKLADNĚ A PŘESNĚ PŘEČÍST A EXTRAHOVAT SEZNAM VŠECH JÍDEL Z PŘILOŽENÉ FOTOGRAFIE NEBO TEXTU.
 
-Použij styl: ${selectedTone}
-Případný název restaurace: ${restaurantName || 'Naše restaurace / bistro'}
-Zvláštní poznámka k podávání: ${specialsNote || 'Obědy podáváme obvykle 11:00 - 14:00 do vyprodání.'}
+Pravidla pro extrakci položek (DISHES):
+1. Přečti VŠECHNY položky bez výjimky – polévky, hlavní chody, minutky, týdenní nabídky, saláty i dezerty.
+2. Pro každé jídlo urči:
+   - "category": ("Polévky", "Hlavní jídla", "Týdenní speciál", "Dezerty a doplňky")
+   - "name": přesný a plný název jídla (včetně gramáže, je-li uvedena, např. "150g Hovězí líčka na víně")
+   - "description": přílohy a detaily (např. "bramborovo-celerové pyré, glazovaná karotka")
+   - "price": přesná cena (např. "185 Kč", "45 Kč"). Pokud cena na snímku není, uveď "-" nebo realistickou cenu.
+   - "allergens": pole celých čísel alergenů 1 až 14. Pokud jsou na fotce čísla uvedena, přepiš je. Pokud čísla chybí, TY jako šéfkuchař sám přesně urči čísla alergenů podle surovin (např. lepek 1, vejce 3, mléko/máslo 7, celer 9, hořčice 10).
+3. Pokud je na fotce viditelný název restaurace nebo datum/den nabídky, extrahuj je do "restaurantName" a "menuDate".
+4. NIKDY nevracej prázdný seznam dishes. Seznam musí obsahovat reálná jídla z fotografie.
+5. Vytvoř lákavý marketingový text na Facebook a Instagram v českém jazyce v tónu: ${selectedTone}.`;
 
-Vždy piš v perfektní, přirozené češtině s gastronadšením a citem pro kuchařské řemeslo.`;
+    const promptText = `ÚKOL: DŮKLADNÁ ANALÝZA A OCR EXTRAKCE JÍDELNÍHO LÍSTKU / POLEDNÍHO MENU.
 
-    const promptText = `Analyzuj následující polední menu a vrať POUZE validní JSON v přesně definované struktuře.
+${
+  image
+    ? `POKYNY PRO FOTOGRAFII:
+- Prohlédni si přiložený snímek poledního menu / jídelního lístku (může to být tištěný papír, tabule psaná křídou, vývěska nebo jídelní lístek na stole).
+- Přečti každý řádek a vytáhni kompletní seznam pokrmů s cenami a alergeny.
+- Každé jídlo zařaď do seznamu 'dishes'.`
+    : `ZADANÝ TEXT MENU:\n"""\n${text}\n"""`
+}
+${text && image ? `\nDOPLŇUJÍCÍ POZNÁMKY K MENU:\n"""\n${text}\n"""` : ''}
 
-${text ? `ZADANÝ TEXT MENU:\n"""\n${text}\n"""` : 'Analyzuj přiloženou fotografii papírového poledního menu.'}
-
-Vrať JSON podle této struktury:
+Vrať POUZE validní JSON v této přesné struktuře:
 {
-  "restaurantName": "Zjištěný nebo doplněný název podniku",
-  "menuDate": "Název a den nabídky (např. Polední menu – Středa 24. září)",
-  "servingHours": "např. 11:00 – 14:30 (nebo do vyprodání)",
+  "restaurantName": "${restaurantName || 'Název restaurace zjištěný z fotky nebo Naše restaurace'}",
+  "menuDate": "Zjištěný den a datum nabídky (např. Polední menu – Středa 24. září)",
+  "servingHours": "${specialsNote || '11:00 – 14:30 (nebo do vyprodání)'}",
   "dishes": [
     {
-      "category": "Polévky" | "Hlavní jídla" | "Dezerty a doplňky" | "Týdenní speciál",
-      "name": "Název jídla",
-      "description": "Lákavý detailní popis nebo přílohy",
+      "category": "Polévky",
+      "name": "Název polévky",
+      "description": "popis nebo suroviny",
+      "price": "45 Kč",
+      "allergens": [1, 9]
+    },
+    {
+      "category": "Hlavní jídla",
+      "name": "Název hlavního chodu",
+      "description": "příloha a omáčka",
       "price": "165 Kč",
       "allergens": [1, 3, 7]
     }
@@ -217,53 +240,71 @@ Vrať JSON podle této struktury:
   "socialPosts": {
     "facebook": {
       "headline": "Chytlavý titulek postu s emotikony",
-      "body": "Poutavý hlavní text popisující dnešní speciality, vůně a chutě",
-      "callToAction": "Výzva k akci (např. 'Stůl si rezervujte na tel. ... nebo se rovnou zastavte!')",
-      "hashtags": ["#polednimenu", "#kamnaobed", "#dnesjim", "#restaurace", "#obed", "#poledninabidka"],
-      "fullFormattedText": "Kompletní hotový post pro Facebook připravený k okamžitému zkopírování"
+      "body": "Poutavý hlavní text popisující dnešní speciality na základě rozpoznaných jídel",
+      "callToAction": "Výzva k rezervaci či zastavení se na oběd",
+      "hashtags": ["#polednimenu", "#kamnaobed", "#dnesjim", "#restaurace", "#obed"],
+      "fullFormattedText": "Kompletní hotový post pro Facebook"
     },
     "instagram": {
-      "hook": "První úderná věta / hook pro IG",
+      "hook": "První úderná věta pro Instagram",
       "caption": "Estetický text pro Instagram s mezerami a emotikony",
-      "hashtags": ["#polednimenu", "#dnesjim", "#obed", "#gastromapa", "#restaurace", "#foodiecz", "#kamnaobed", "#ceskakuchyne"],
-      "fullFormattedText": "Kompletní hotový popisek pro Instagram i s hashtagy"
+      "hashtags": ["#polednimenu", "#dnesjim", "#obed", "#foodiecz", "#kamnaobed"],
+      "fullFormattedText": "Kompletní hotový popisek pro Instagram"
     },
-    "smsWhatsapp": "Stručný text pro SMS nebo WhatsApp zprávu stálým štamgastům a zákazníkům"
+    "smsWhatsapp": "Stručný text zprávy pro štamgasty se seznamem jídel a cenami"
   },
   "htmlTable": {
-    "styledSnippet": "Kompletní responzivní HTML kód tabulky s inline styly (moderní čistý gastro design s lehkými rámečky, zarovnanými cenami a decentními bublinami pro čísla alergenů), který vypadá skvěle na každém webu.",
-    "minimalSnippet": "Čistá HTML tabulka s třídami pro snadné přizpůsobení v CSS."
+    "styledSnippet": "Kompletní responzivní HTML kód tabulky s inline styly pro všechna extrahovaná jídla",
+    "minimalSnippet": "Čistá HTML tabulka s třídami"
   },
   "allergenAnalysis": {
     "detectedAllergens": [
       {
         "number": 1,
         "name": "Obiloviny obsahující lepek",
-        "foundInDishes": ["Název jídla 1", "Název jídla 2"]
+        "foundInDishes": ["názvy jídel obsahujících lepek"]
       }
     ],
     "safetyWarnings": [
-      "Upozornění šéfkuchaře na možné skryté alergeny (např. zkontrolujte celer 9 v základu svíčkové omáčky)"
+      "Bezpečnostní upozornění na možné skryté alergeny podle českých gastronomických standardů"
     ],
     "isInspectionReady": true
   },
   "marketingTips": [
-    "Doporučení pro nejlepší čas publikace na sítě (cca 10:15 - 10:45)",
-    "Tip na atraktivní fotografii na stories"
+    "Doporučený čas publikace na sítě (cca 10:15 - 10:45)",
+    "Tip na lákavou fotku jídla"
   ]
 }`;
 
     const parts: any[] = [];
     if (image) {
-      // Clean base64 prefix if present
-      const cleanBase64 = image.replace(/^data:image\/[a-zA-Z0-9+]+;base64,/, '');
+      let cleanBase64 = '';
+      let effectiveMime = mimeType || 'image/jpeg';
+
+      if (typeof image === 'string' && image.includes(';base64,')) {
+        const match = image.match(/^data:([^;]+);base64,/);
+        if (match && match[1]) {
+          effectiveMime = match[1];
+        }
+        cleanBase64 = image.split(';base64,')[1].trim();
+      } else if (typeof image === 'string') {
+        cleanBase64 = image.trim();
+      }
+
+      if (!cleanBase64) {
+        return res.status(400).json({
+          error: 'Nahraný obrázek je prázdný nebo poškozený. Zkuste prosím vyfotit nebo nahrát fotografii znovu.',
+        });
+      }
+
       parts.push({
         inlineData: {
-          mimeType,
+          mimeType: effectiveMime,
           data: cleanBase64,
         },
       });
     }
+
     parts.push({
       text: promptText,
     });
